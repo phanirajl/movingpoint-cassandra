@@ -13,49 +13,14 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import java.util.*;
 
-public class QueryEngine {
+public class TestParser {
 
     public static List<TableContent> tables = new ArrayList<TableContent>();
-    public static Object[][] finalResult;
-    private String server;
-    private String keyspace;
-
-    public QueryEngine(String serverAccessed, String keyspaceAccessed) {
-        server = serverAccessed;
-        keyspace = keyspaceAccessed;
-        tables.clear();
-    }
-
-    public List<String> getColList(String table) {
-        Cluster cluster = Cluster.builder().addContactPoint(server).build();
-        Session session = cluster.connect(keyspace);
-
-        List<ColumnMetadata> colmds = session.getCluster().getMetadata().getKeyspace(keyspace).getTable(table).getColumns();
-        List<String> columns = new ArrayList<String>();
-        for (int i=0; i<colmds.size(); i++) {
-            columns.add(colmds.get(i).getName());
-        }
-
-        session.close();
-        cluster.close();
-        return columns;
-    }
-
-    public void originalQuery(String q) {
-        Cluster cluster = Cluster.builder().addContactPoint(server).build();
-        Session session = cluster.connect(keyspace);
-
-        session.execute(q);
-
-        session.close();
-        cluster.close();
-
-    }
-
-    public Object[][] getResult(String q) {
+    public static void main(String args[]) {
         try {
 
-            Statement statement = CCJSqlParserUtil.parse(q);
+            Statement statement = CCJSqlParserUtil.parse
+                    ("select distance('C1.center', 'C2.center') from City as C1, City as C2 where C2.name='Yogyakarta' and C1.name='Bekasi';");
             Select selectStatement = (Select) statement;
             PlainSelect plainSelect = (PlainSelect) selectStatement.getSelectBody();
             if (plainSelect.getFromItem().toString().contains(" AS ")) {
@@ -120,8 +85,8 @@ public class QueryEngine {
 
 
 
-            Cluster cluster = Cluster.builder().addContactPoint(server).build();
-            Session session = cluster.connect(keyspace);
+            Cluster cluster = Cluster.builder().addContactPoint("127.0.0.1").build();
+            Session session = cluster.connect("moving_point");
             for (int i=0; i<tables.size(); i++) {
                 List<String> ls = new ArrayList<String>();
                 ls.addAll(tables.get(i).attributes);
@@ -144,10 +109,6 @@ public class QueryEngine {
                     tables.get(i).content = lr;
                 }
             }
-
-
-            session.close();
-            cluster.close();
 
             int row = 1;
             for (int i=0; i<tables.size(); i++) {
@@ -249,7 +210,7 @@ public class QueryEngine {
             }
 
             if (rowFR > 0) {
-                finalResult = new Object[rowFR][plainSelect.getSelectItems().size()];
+                Object[][] finalResult = new Object[rowFR][plainSelect.getSelectItems().size()];
 
                 for (int i=0; i<plainSelect.getSelectItems().size(); i++) {
                     if (plainSelect.getSelectItems().get(i).toString().contains("(")) {
@@ -271,16 +232,7 @@ public class QueryEngine {
                             if (selected[j] == true) {
                                 int index = getIndexByTableName(s[0], tables);
                                 Row r = matrixRow[j][index];
-                                if (r.getColumnDefinitions().getType(s[1]).toString().contains(".line>")) {
-                                    finalResult[irowfr][i] = convertUDTValueToLine(r, s[1]);
-                                }
-                                else if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
-                                    finalResult[irowfr][i] = convertUDTValueToPoint(r, s[1]);
-                                }
-                                else {
-                                    finalResult[irowfr][i] = r.getObject(s[1]);
-                                }
-                                System.out.println(finalResult[irowfr][i].getClass());
+                                finalResult[irowfr][i] = r.getObject(s[1]);
                                 irowfr++;
                             }
                         }
@@ -295,11 +247,12 @@ public class QueryEngine {
                 }
             }
 
+            session.close();
+            cluster.close();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return finalResult;
 
     }
 
@@ -322,56 +275,6 @@ public class QueryEngine {
                 tables.get(getIndexByTableName(tableAttribute[0], tables)).attributes.add(tableAttribute[1]);
             }
         }
-    }
-
-    public static Line convertUDTValueToLine(Row r, String attr) {
-        Line l = new Line();
-        l.no_points = r.getUDTValue(attr).getInt(1);
-        l.point_set = new ArrayList<Point>();
-        List<UDTValue> points = r.getUDTValue(attr).getList(2, UDTValue.class);
-        for (int i=0; i<points.size(); i++) {
-            Point p = new Point();
-            p.absis = points.get(i).getDouble(0);
-            p.ordinat = points.get(i).getDouble(1);
-            l.point_set.add(p);
-        }
-        return l;
-    }
-
-    public static Point convertUDTValueToPoint(Row r, String attr) {
-        Point p = new Point();
-        p.absis = r.getUDTValue(attr).getDouble(0);
-        p.ordinat = r.getUDTValue(attr).getDouble(1);
-        return p;
-    }
-
-    public static Points conovertUDTValueToPoints(Row r, String attr) {
-        Points ps = new Points();
-        ps.no_points = r.getUDTValue(attr).getInt(1);
-        ps.point_set = new HashSet<Point>();
-        List<UDTValue> points = r.getUDTValue(attr).getList(2, UDTValue.class);
-        for (int i=0; i<points.size(); i++) {
-            Point p = new Point();
-            p.absis = points.get(i).getDouble(0);
-            p.ordinat = points.get(i).getDouble(1);
-            ps.point_set.add(p);
-        }
-        return ps;
-    }
-
-    public static MPoint convertUDTValueToMPoint(Row r, String attr) {
-        MPoint mp = new MPoint();
-        mp.no_components = r.getUDTValue(attr).getInt(1);
-        mp.component_set = new HashSet<MPComponent>();
-        List<UDTValue> mpoints = r.getUDTValue(attr).getList(3, UDTValue.class);
-        for (int i=0; i<mpoints.size(); i++) {
-            MPComponent mpc = new MPComponent();
-            mpc.p.absis = mpoints.get(i).getUDTValue(0).getDouble(0);
-            mpc.p.ordinat = mpoints.get(i).getUDTValue(0).getDouble(1);
-            mpc.t = mpoints.get(i).getTimestamp(1);
-            mp.component_set.add(mpc);
-        }
-        return mp;
     }
 
     public static Object evaluate(String expr, final Row[] result) throws JSQLParserException {
@@ -428,7 +331,8 @@ public class QueryEngine {
                         int index = getIndexByTableName(s[0], tables);
                         Row r = result[index];
                         if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
-                            p1 = convertUDTValueToPoint(r, s[1]);
+                            p1.absis = r.getUDTValue(s[1]).getDouble(0);
+                            p1.ordinat = r.getUDTValue(s[1]).getDouble(1);
                         }
                     }
 
@@ -437,7 +341,8 @@ public class QueryEngine {
                         int index = getIndexByTableName(s[0], tables);
                         Row r = result[index];
                         if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
-                            p2 = convertUDTValueToPoint(r, s[1]);
+                            p2.absis = r.getUDTValue(s[1]).getDouble(0);
+                            p2.ordinat = r.getUDTValue(s[1]).getDouble(1);
                         }
                     }
 
@@ -453,7 +358,15 @@ public class QueryEngine {
                         int index = getIndexByTableName(s[0], tables);
                         Row r = result[index];
                         if (r.getColumnDefinitions().getType(s[1]).toString().contains(".line>")) {
-                            l = convertUDTValueToLine(r, s[1]);
+                            l.no_points = r.getUDTValue(s[1]).getInt(1);
+                            l.point_set = new ArrayList<Point>();
+                            List<UDTValue> points = r.getUDTValue(s[1]).getList(2, UDTValue.class);
+                            for (int i=0; i<points.size(); i++) {
+                                Point p = new Point();
+                                p.absis = points.get(i).getDouble(0);
+                                p.ordinat = points.get(i).getDouble(1);
+                                l.point_set.add(p);
+                            }
                         }
                     }
                     CustomFunction cf = new CustomFunction();

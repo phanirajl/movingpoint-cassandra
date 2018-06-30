@@ -1,4 +1,13 @@
+import java.util.Stack;
+import com.datastax.driver.core.Row;
+
 public class CustomFunction {
+//    public Object getFunction (String name, Stack<Object> stack, Row[] result) {
+//        if (name.equals("distance")) {
+//
+//        }
+//    }
+
     public double distance (Point p1, Point p2) {
         int R = 6371; // Radius of the earth in km
         double dLat = deg2rad(p2.ordinat-p1.ordinat);  // deg2rad below
