@@ -25,7 +25,7 @@ public class AddCSVToDB {
     public static void addToDB() throws IOException {
 
         Reader reader = Files.newBufferedReader(Paths.get(file));
-        CSVReader csvReader = new CSVReader(reader);
+        CSVReader csvReader = new CSVReader(reader, ';');
         QueryEngine qe = new QueryEngine(server, keyspace);
         List<String> columns = qe.getColList(table);
         // Reading Records One by One in a String array
@@ -34,6 +34,7 @@ public class AddCSVToDB {
             qe = new QueryEngine(server, keyspace);
             String query = "insert into " + table + "("+ String.join(",", columns) +") values (" + String.join(",", nextRecord) + ");";
 //            System.out.println(query);
+            System.out.println(query);
             qe.originalQuery(query);
         }
         System.out.println("done");

@@ -27,7 +27,6 @@ public class TestGUI {
     private static Object[][] result;
 
     PrintStream out = new PrintStream( new TextAreaOutputStream( console ) );
-    SpringLayout layout = new SpringLayout();
 
     public TestGUI(){
         prepareGUI();
@@ -204,17 +203,23 @@ public class TestGUI {
                 String query = queryText.getText();
                 QueryEngine qe = new QueryEngine(serverAccessed, keyspaceAccessed);
                 result = qe.getResult(query);
-                for (int j=0; j<result[0].length; j++) {
-                    if (result[0][j].getClass() == Point.class) {
-                        indexPoint = j;
-                    }
-                    else if (result[0][j].getClass() == Points.class) {
-                        indexPoints = j;
-                    }
-                    else if (result[0][j].getClass() == Line.class) {
-                        indexLine = j;
+                if (result!=null) {
+                    for (int j=0; j<result[0].length; j++) {
+                        if (result[0][j] != null) {
+                            if (result[0][j].getClass() == Point.class) {
+                                indexPoint = j;
+                            }
+                            else if (result[0][j].getClass() == Points.class) {
+                                indexPoints = j;
+                            }
+                            else if (result[0][j].getClass() == Line.class) {
+                                indexLine = j;
+                            }
+                        }
+
                     }
                 }
+
             }
             else if( command.equals( "Cancel" ) )  {
                 queryText.setText("");
@@ -239,6 +244,14 @@ public class TestGUI {
             else if (command.equals("Create")) {
                 QueryEngine qe = new QueryEngine(serverAccessed, keyspaceAccessed);
                 qe.originalQuery(queryText.getText());
+            }
+            else if (command.equals("InsertData")) {
+                try {
+                    AddCSVToDB acdb = new AddCSVToDB(keyspace.getText(), server.getText(), table.getText(), file.getText());
+                    acdb.addToDB();
+                } catch (Exception err) {
+                    err.printStackTrace();
+                }
             }
             else if (command.equals("point")) {
                 ExecCommand ec = new ExecCommand();
@@ -293,26 +306,29 @@ public class TestGUI {
         enterButton.setActionCommand("Enter");
         enterButton.addActionListener(new ButtonClickListener());
 
-        JLabel preprocessCSV = new JLabel("Preprocess CSV: ", JLabel.LEFT);
         JLabel inputTable = new JLabel("Input Table: ", JLabel.CENTER);
         table = new JTextArea(1, 15);
         JLabel inputFile = new JLabel("Input File: ", JLabel.CENTER);
         file = new JTextArea(1, 15);
 
-        JButton preprocessPoint = new JButton("Preprocess Point and Add");
-        JButton preprocessPoints = new JButton("Preprocess Points and Add");
-        JButton preprocessLine = new JButton("Preprocess Line and Add");
-        JButton preprocessMPoint = new JButton("Preprocess MPoint and Add");
+//        JButton preprocessPoint = new JButton("Preprocess Point and Add");
+//        JButton preprocessPoints = new JButton("Preprocess Points and Add");
+//        JButton preprocessLine = new JButton("Preprocess Line and Add");
+//        JButton preprocessMPoint = new JButton("Preprocess MPoint and Add");
+//
+//        preprocessPoint.setActionCommand("point");
+//        preprocessPoints.setActionCommand("points");
+//        preprocessLine.setActionCommand("line");
+//        preprocessMPoint.setActionCommand("mpoint");
+//
+//        preprocessPoint.addActionListener(new ButtonClickListener());
+//        preprocessPoints.addActionListener(new ButtonClickListener());
+//        preprocessLine.addActionListener(new ButtonClickListener());
+//        preprocessMPoint.addActionListener(new ButtonClickListener());
 
-        preprocessPoint.setActionCommand("point");
-        preprocessPoints.setActionCommand("points");
-        preprocessLine.setActionCommand("line");
-        preprocessMPoint.setActionCommand("mpoint");
-
-        preprocessPoint.addActionListener(new ButtonClickListener());
-        preprocessPoints.addActionListener(new ButtonClickListener());
-        preprocessLine.addActionListener(new ButtonClickListener());
-        preprocessMPoint.addActionListener(new ButtonClickListener());
+        JButton insertData = new JButton("Insert");
+        insertData.setActionCommand("InsertData");
+        insertData.addActionListener(new ButtonClickListener());
 
         JPanel subP1 = new JPanel();
         JPanel subP2 = new JPanel();
@@ -333,15 +349,15 @@ public class TestGUI {
         JPanel subP12 = new JPanel();
         JPanel subP13 = new JPanel();
 
-        subP11.add(preprocessCSV);
-        subP12.add(inputTable);
-        subP12.add(table);
-        subP12.add(inputFile);
-        subP12.add(file);
-        subP13.add(preprocessPoint);
-        subP13.add(preprocessPoints);
-        subP13.add(preprocessLine);
-        subP13.add(preprocessMPoint);
+        subP11.add(inputTable);
+        subP11.add(table);
+        subP11.add(inputFile);
+        subP11.add(file);
+        subP11.add(insertData);
+//        subP13.add(preprocessPoint);
+//        subP13.add(preprocessPoints);
+//        subP13.add(preprocessLine);
+//        subP13.add(preprocessMPoint);
 
         JPanel p1 = new JPanel();
         p1.setLayout(new GridLayout(6,1));
@@ -404,7 +420,7 @@ public class TestGUI {
                 "\n" +
                 "\t\t<div id=\"mapid\"></div>\n" +
                 "\t\t<script>\n" +
-                "   \t\t\tvar mymap = L.map('mapid').setView([-2.980039043, 104.7500297], 13);\n" +
+                "   \t\t\tvar mymap = L.map('mapid').setView([-2.980039043, 104.7500297], 1);\n" +
                 "   \t\t\tL.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {\n" +
                 "    \t\t\tattribution: 'Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>',\n" +
                 "    \t\t\tmaxZoom: 18,\n" +
@@ -414,7 +430,31 @@ public class TestGUI {
         String postContent = "   \t\t</script>\n"+ "\t</body>\n" + "</html>";
         if (indexPoint!=-1) {
             for (int i=0; i<result.length; i++) {
-                content = content + "\t\t\tvar marker = L.marker([" +  ((Point)result[i][indexPoint]).absis + "," +  ((Point)result[i][indexPoint]).ordinat + "]).addTo(mymap);\n";
+                content = content + "\t\t\tvar marker = L.marker([" +  ((Point)result[i][indexPoint]).ordinat + "," +  ((Point)result[i][indexPoint]).absis + "]).addTo(mymap);\n";
+            }
+            content = precontent + content + postContent;
+        }
+        else if (indexLine!=-1) {
+            content = content + "\t\t\tvar latlngs = [";
+            for (int i=0; i<result.length; i++) {
+                for (int j=0; j<((Line)result[i][indexLine]).no_points; j++) {
+                    content = content + "[";
+                    content = content + ((Line)result[i][indexLine]).point_set.get(j).ordinat + "," + ((Line)result[i][indexLine]).point_set.get(j).absis;
+                    content = content + "]";
+                    if (j!=((Line)result[i][indexLine]).no_points-1) {
+                        content = content + ",";
+                    }
+                }
+                content = content + "];\n";
+                content = content + "\t\t\tvar polyline = L.polyline(latlngs, {color: 'red'}).addTo(mymap);";
+            }
+            content = precontent + content + postContent;
+        }
+        else if (indexPoints!=1) {
+            for (int i=0; i<result.length; i++) {
+                for (Point p : ((Points)result[i][indexPoints]).point_set) {
+                    content = content + "\t\t\tvar marker = L.marker([" +  p.ordinat + "," +  p.absis + "]).addTo(mymap);\n";
+                }
             }
             content = precontent + content + postContent;
         }

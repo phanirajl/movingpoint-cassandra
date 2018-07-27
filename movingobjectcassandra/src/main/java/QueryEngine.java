@@ -127,17 +127,21 @@ public class QueryEngine {
                 ls.addAll(tables.get(i).attributes);
                 if (tables.get(i).where == null) {
                     String query = "select " + String.join(",", ls) + " from " + tables.get(i).tableRealName + ";";
-                    System.out.println(query);
+//                    System.out.println(query);
                     ResultSet results = session.execute(query);
                     List<Row> lr = new ArrayList<Row>();
                     lr.addAll(results.all());
                     tables.get(i).content = lr;
                 }
                 else {
+                    List<ColumnMetadata> lcm = cluster.getMetadata().getKeyspace(session.getLoggedKeyspace()).getTable(tables.get(i).tableRealName).getPrimaryKey();
+                    for (int j=0; j<lcm.size(); j++) {
+                        tables.get(i).pkey.add(lcm.get(j).getName());
+                    }
                     List<String> where = new ArrayList<String>();
                     where.addAll(tables.get(i).where);
                     String query = "select " + String.join(",", ls) + " from " + tables.get(i).tableRealName + " where " + String.join(" and ", where) + ";";
-                    System.out.println(query);
+//                    System.out.println(query);
                     ResultSet results = session.execute(query);
                     List<Row> lr = new ArrayList<Row>();
                     lr.addAll(results.all());
@@ -176,9 +180,11 @@ public class QueryEngine {
                         //eval(splitS[0])
                         //kalau true
                         //kalau false
+//                        System.out.println("masuk");
                         for (int i=0; i<row; i++) {
                             if (selected[i] == true) {
                                 boolean b = (Boolean) evaluate(splitS[0], matrixRow[i]);
+//                                System.out.println("b=" + b);
                                 if (b == false) {
                                     selected[i] = false;
                                 }
@@ -277,10 +283,16 @@ public class QueryEngine {
                                 else if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
                                     finalResult[irowfr][i] = convertUDTValueToPoint(r, s[1]);
                                 }
+                                else if (r.getColumnDefinitions().getType(s[1]).toString().contains(".points>")) {
+                                    finalResult[irowfr][i] = convertUDTValueToPoints(r, s[1]);
+                                }
+                                else if (r.getColumnDefinitions().getType(s[1]).toString().contains(".mpoint>")) {
+                                    finalResult[irowfr][i] = convertUDTValueToMPoint(r, s[1]);
+                                }
                                 else {
                                     finalResult[irowfr][i] = r.getObject(s[1]);
                                 }
-                                System.out.println(finalResult[irowfr][i].getClass());
+//                                System.out.println(finalResult[irowfr][i].getClass());
                                 irowfr++;
                             }
                         }
@@ -289,7 +301,25 @@ public class QueryEngine {
 
                 for (int j=0; j<rowFR; j++) {
                     for (int k=0; k<plainSelect.getSelectItems().size(); k++) {
-                        System.out.print(finalResult[j][k] + " ");
+                        if (finalResult[j][k].getClass() == Point.class) {
+                            ((Point) finalResult[j][k]).print();
+                        }
+                        else if (finalResult[j][k].getClass() == Points.class) {
+                            ((Points) finalResult[j][k]).print();
+                        }
+                        else if (finalResult[j][k].getClass() == Line.class) {
+                            ((Line) finalResult[j][k]).print();
+                        }
+                        else if (finalResult[j][k].getClass() == MPComponent.class) {
+                            ((MPComponent) finalResult[j][k]).print();
+                        }
+                        else if (finalResult[j][k].getClass() == MPoint.class) {
+                            ((MPoint) finalResult[j][k]).print();
+                        }
+                        else {
+                            System.out.print(finalResult[j][k] + " ");
+                        }
+
                     }
                     System.out.println();
                 }
@@ -326,7 +356,6 @@ public class QueryEngine {
 
     public static Line convertUDTValueToLine(Row r, String attr) {
         Line l = new Line();
-        l.no_points = r.getUDTValue(attr).getInt(1);
         l.point_set = new ArrayList<Point>();
         List<UDTValue> points = r.getUDTValue(attr).getList(2, UDTValue.class);
         for (int i=0; i<points.size(); i++) {
@@ -335,6 +364,8 @@ public class QueryEngine {
             p.ordinat = points.get(i).getDouble(1);
             l.point_set.add(p);
         }
+        l.no_points = l.point_set.size();
+        l.setBoundingBox();
         return l;
     }
 
@@ -345,17 +376,18 @@ public class QueryEngine {
         return p;
     }
 
-    public static Points conovertUDTValueToPoints(Row r, String attr) {
+    public static Points convertUDTValueToPoints(Row r, String attr) {
         Points ps = new Points();
-        ps.no_points = r.getUDTValue(attr).getInt(1);
         ps.point_set = new HashSet<Point>();
-        List<UDTValue> points = r.getUDTValue(attr).getList(2, UDTValue.class);
-        for (int i=0; i<points.size(); i++) {
+        Set<UDTValue> points = r.getUDTValue(attr).getSet(2, UDTValue.class);
+        for (UDTValue uv : points) {
             Point p = new Point();
-            p.absis = points.get(i).getDouble(0);
-            p.ordinat = points.get(i).getDouble(1);
+            p.absis = uv.getDouble(0);
+            p.ordinat = uv.getDouble(1);
             ps.point_set.add(p);
         }
+        ps.no_points = ps.point_set.size();
+        ps.setBoundingBox();
         return ps;
     }
 
@@ -363,13 +395,17 @@ public class QueryEngine {
         MPoint mp = new MPoint();
         mp.no_components = r.getUDTValue(attr).getInt(1);
         mp.component_set = new HashSet<MPComponent>();
-        List<UDTValue> mpoints = r.getUDTValue(attr).getList(3, UDTValue.class);
-        for (int i=0; i<mpoints.size(); i++) {
+        mp.lifespan[0] = r.getUDTValue(attr).getTupleValue(2).getTimestamp(0);
+        mp.lifespan[1] = r.getUDTValue(attr).getTupleValue(2).getTimestamp(1);
+        Set<UDTValue> mpoints = r.getUDTValue(attr).getSet(3, UDTValue.class);
+        for (UDTValue uv : mpoints) {
             MPComponent mpc = new MPComponent();
-            mpc.p.absis = mpoints.get(i).getUDTValue(0).getDouble(0);
-            mpc.p.ordinat = mpoints.get(i).getUDTValue(0).getDouble(1);
-            mpc.t = mpoints.get(i).getTimestamp(1);
+//            System.out.println(uv.getUDTValue(0).get(0, Double.class));
+            mpc.p.absis = uv.getUDTValue(0).getDouble(0);
+            mpc.p.ordinat = uv.getUDTValue(0).getDouble(1);
+            mpc.t = uv.getTimestamp(1);
             mp.component_set.add(mpc);
+//            System.out.println(mpc.t);
         }
         return mp;
     }
@@ -414,53 +450,9 @@ public class QueryEngine {
             @Override
             public void visit(Function function) {
                 super.visit(function);
-
                 String name = function.getName();
-
-                if (name.equals("distance")) {
-                    Object o1 = stack.pop();
-                    Object o2 = stack.pop();
-                    Point p1 = new Point();
-                    Point p2 = new Point();
-
-                    if (o1.getClass() == String.class) {
-                        String[] s = o1.toString().split("\\.");
-                        int index = getIndexByTableName(s[0], tables);
-                        Row r = result[index];
-                        if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
-                            p1 = convertUDTValueToPoint(r, s[1]);
-                        }
-                    }
-
-                    if (o2.getClass() == String.class) {
-                        String[] s = o2.toString().split("\\.");
-                        int index = getIndexByTableName(s[0], tables);
-                        Row r = result[index];
-                        if (r.getColumnDefinitions().getType(s[1]).toString().contains(".point>")) {
-                            p2 = convertUDTValueToPoint(r, s[1]);
-                        }
-                    }
-
-                    CustomFunction cf = new CustomFunction();
-                    stack.push(cf.distance(p1, p2));
-                }
-                else if (name.equals("length")) {
-                    Object o = stack.pop();
-                    Line l = new Line();
-
-                    if (o.getClass() == String.class) {
-                        String[] s = o.toString().split("\\.");
-                        int index = getIndexByTableName(s[0], tables);
-                        Row r = result[index];
-                        if (r.getColumnDefinitions().getType(s[1]).toString().contains(".line>")) {
-                            l = convertUDTValueToLine(r, s[1]);
-                        }
-                    }
-                    CustomFunction cf = new CustomFunction();
-                    stack.push(cf.length(l));
-                }
-
-
+                CustomFunction cf = new CustomFunction();
+                stack.push(cf.getFunction(name, stack, result, tables));
             }
 
         };
