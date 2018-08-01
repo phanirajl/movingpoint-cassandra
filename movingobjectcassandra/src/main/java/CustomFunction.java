@@ -484,22 +484,24 @@ public class CustomFunction {
     }
 
     public double distance (Point p1, Point p2) {
+        //arccos(sin(lat1) · sin(lat2) + cos(lat1) · cos(lat2) · cos(lon1 - lon2)) · R
         int R = 6371; // Radius of the earth in km
-        double dLat = deg2rad(p2.ordinat-p1.ordinat);  // deg2rad below
-        double dLon = deg2rad(p2.absis-p1.absis);
-        double a =
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                        Math.cos(deg2rad(p1.ordinat)) * Math.cos(deg2rad(p2.ordinat)) *
-                                Math.sin(dLon/2) * Math.sin(dLon/2)
-                ;
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        double d = R * c; // Distance in km
-        return d;
+//        double dLat = deg2rad(p2.ordinat-p1.ordinat);  // deg2rad below
+//        double dLon = deg2rad(p2.absis-p1.absis);
+//        double a =
+//                Math.sin(dLat/2) * Math.sin(dLat/2) +
+//                        Math.cos(deg2rad(p1.ordinat)) * Math.cos(deg2rad(p2.ordinat)) *
+//                                Math.sin(dLon/2) * Math.sin(dLon/2)
+//                ;
+//        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+//        double d = R * c; // Distance in km
+//        return d;
+        return Math.acos(Math.sin(Math.toRadians(p1.ordinat)) * Math.sin(Math.toRadians(p2.ordinat)) + Math.cos(Math.toRadians(p1.ordinat)) * Math.cos(Math.toRadians(p2.ordinat)) * Math.cos(Math.toRadians(p1.absis)-Math.toRadians(p2.absis))) * R;
     }
 
-    private double deg2rad(double deg) {
-        return deg * (Math.PI/180);
-    }
+//    private double deg2rad(double deg) {
+//        return deg * (Math.PI/180);
+//    }
 
     public double length (Line l) {
         double result = 0;
@@ -518,9 +520,11 @@ public class CustomFunction {
     }
 
     public Point intersection(Point p, Points ps) {
-        for (Point po : ps.point_set) {
-            if (po.absis == p.absis && po.ordinat == p.ordinat) {
-                return p;
+        if (p.absis >= ps.bounding_box[0].absis && p.absis <= ps.bounding_box[1].absis && p.ordinat >= ps.bounding_box[0].ordinat && p.ordinat <= ps.bounding_box[1].ordinat) {
+            for (Point po : ps.point_set) {
+                if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                    return p;
+                }
             }
         }
         return null;
@@ -532,38 +536,49 @@ public class CustomFunction {
 
     public Points intersection(Points ps1, Points ps2) {
         Points ps = new Points();
-        if (ps1.no_points < ps2.no_points) {
-            for (Point p : ps1.point_set) {
-                for (Point po : ps2.point_set) {
-                    if (po.absis == p.absis && po.ordinat == p.ordinat) {
-                        ps.point_set.add(po);
+        if (ps1.bounding_box[0].absis >= ps2.bounding_box[0].absis && ps1.bounding_box[1].absis <= ps2.bounding_box[1].absis && ps1.bounding_box[0].ordinat >= ps2.bounding_box[0].ordinat && ps1.bounding_box[1].ordinat <= ps2.bounding_box[1].ordinat) {
+            if (ps1.no_points < ps2.no_points) {
+                for (Point p : ps1.point_set) {
+                    for (Point po : ps2.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            ps.point_set.add(po);
+                        }
                     }
                 }
             }
-        }
-        else {
-            for (Point p : ps2.point_set) {
-                for (Point po : ps1.point_set) {
-                    if (po.absis == p.absis && po.ordinat == p.ordinat) {
-                        ps.point_set.add(po);
+            else {
+                for (Point p : ps2.point_set) {
+                    for (Point po : ps1.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            ps.point_set.add(po);
+                        }
                     }
                 }
             }
+            ps.no_points=ps.point_set.size();
+            ps.setBoundingBox();
         }
-        ps.no_points=ps.point_set.size();
-        ps.setBoundingBox();
         return ps;
     }
 
     public boolean intersects(Points ps1, Points ps2) {
-        for (Point p : ps1.point_set) {
-            for (Point po : ps2.point_set) {
-//                System.out.println("p1.absis= " + p.absis);
-//                System.out.println("p2.absis= " + po.absis);
-//                System.out.println("p1.ordinat= " + p.ordinat);
-//                System.out.println("p2.ordinat" + po.ordinat);
-                if (p.absis == po.absis && p.ordinat == po.ordinat) {
-                    return true;
+        if (ps1.bounding_box[0].absis >= ps2.bounding_box[0].absis && ps1.bounding_box[1].absis <= ps2.bounding_box[1].absis && ps1.bounding_box[0].ordinat >= ps2.bounding_box[0].ordinat && ps1.bounding_box[1].ordinat <= ps2.bounding_box[1].ordinat) {
+            if (ps1.no_points < ps2.no_points) {
+                for (Point p : ps1.point_set) {
+                    for (Point po : ps2.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            else {
+                for (Point p : ps2.point_set) {
+                    for (Point po : ps1.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            return true;
+                        }
+                    }
                 }
             }
         }
@@ -612,26 +627,28 @@ public class CustomFunction {
 
     public Points crossings(Line l1, Line l2) {
         Points ps = new Points();
-        if (l1.no_points < l2.no_points) {
-            for (Point p : l1.point_set) {
-                for (Point po : l2.point_set) {
-                    if (p.absis == po.absis && p.ordinat == po.ordinat) {
-                        ps.point_set.add(p);
+        if (l1.bounding_box[0].absis >= l2.bounding_box[0].absis && l1.bounding_box[1].absis <= l2.bounding_box[1].absis && l1.bounding_box[0].ordinat >= l2.bounding_box[0].ordinat && l1.bounding_box[1].ordinat <= l2.bounding_box[1].ordinat) {
+            if (l1.no_points < l2.no_points) {
+                for (Point p : l1.point_set) {
+                    for (Point po : l2.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            ps.point_set.add(po);
+                        }
                     }
                 }
             }
-        }
-        else {
-            for (Point p : l2.point_set) {
-                for (Point po : l1.point_set) {
-                    if (p.absis == po.absis && p.ordinat == po.ordinat) {
-                        ps.point_set.add(p);
+            else {
+                for (Point p : l2.point_set) {
+                    for (Point po : l1.point_set) {
+                        if (po.absis == p.absis && po.ordinat == p.ordinat) {
+                            ps.point_set.add(po);
+                        }
                     }
                 }
             }
+            ps.no_points=ps.point_set.size();
+            ps.setBoundingBox();
         }
-        ps.setBoundingBox();
-        ps.no_points = ps.point_set.size();
         return ps;
     }
 
@@ -707,9 +724,11 @@ public class CustomFunction {
     }
 
     public boolean passes(MPoint mp, Point p) {
-        for (MPComponent mpc : mp.component_set) {
-            if (val(mpc) == p) {
-                return true;
+        if (p.absis >= mp.bounding_box[0].absis && p.absis <= mp.bounding_box[1].absis && p.ordinat >= mp.bounding_box[0].ordinat && p.ordinat <= mp.bounding_box[1].ordinat) {
+            for (MPComponent mpc : mp.component_set) {
+                if (val(mpc) == p) {
+                    return true;
+                }
             }
         }
         return false;

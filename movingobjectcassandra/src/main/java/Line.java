@@ -25,11 +25,11 @@ public class Line {
     }
 
     public void print() {
-        System.out.println("[");
+        System.out.print("[");
         for (int i=0; i<point_set.size(); i++) {
             System.out.print(point_set.get(i).absis + "," + point_set.get(i).ordinat);
             System.out.print(";");
         }
-        System.out.print("]");
+        System.out.print("] | ");
     }
 }

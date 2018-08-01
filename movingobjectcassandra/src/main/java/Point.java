@@ -3,6 +3,6 @@ public class Point {
     double ordinat;
 
     public void print() {
-        System.out.println(absis + "," + ordinat);
+        System.out.println(absis + "," + ordinat + " | ");
     }
 }

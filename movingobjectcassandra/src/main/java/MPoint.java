@@ -1,13 +1,15 @@
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class MPoint {
     Point[] bounding_box = new Point[2];
     int no_components;
     Date[] lifespan = new Date[2];
-    Set<MPComponent> component_set = new HashSet<MPComponent>();
+    List<MPComponent> component_set = new ArrayList<MPComponent>();
 
     public void setBoundingBox() {
         Set<Double> absisList = new HashSet<Double>();
@@ -40,12 +42,12 @@ public class MPoint {
     }
 
     public void print() {
-        System.out.println("[");
+        System.out.print("[");
         for (MPComponent mpc : component_set) {
             System.out.print(mpc.p.absis + "," + mpc.p.ordinat + "," + mpc.t);
             System.out.print(";");
         }
-        System.out.print("]");
+        System.out.print("] | ");
     }
 
 }

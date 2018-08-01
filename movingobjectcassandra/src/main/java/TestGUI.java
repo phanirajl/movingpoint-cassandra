@@ -1,30 +1,31 @@
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
 import java.io.PrintStream;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.io.File;
 
 public class TestGUI {
     private JFrame mainFrame;
-    //   private JLabel headerLabel;
-    private JPanel controlPanel;
-    JTextArea keyspace = new JTextArea(1, 15);
-    JTextArea server = new JTextArea(1, 15);
-    JTextArea table = new JTextArea(1, 15);
-    JTextArea file = new JTextArea(1, 15);
-    private JTextArea queryText;
-    private JTextArea console = new JTextArea(6,25);
     private static String serverAccessed;
     private static String keyspaceAccessed;
     private static int indexPoint;
     private static int indexPoints;
     private static int indexLine;
     private static Object[][] result;
+    JTextArea keyspace = new JTextArea();
+    JTextArea server = new JTextArea();
+    JTextArea query = new JTextArea();
+    JTextArea tableQuery = new JTextArea();
+    JTextArea console = new JTextArea(18, 78);
+    JTextArea tabel = new JTextArea();
+    JTextArea filepath = new JTextArea();
 
     PrintStream out = new PrintStream( new TextAreaOutputStream( console ) );
 
@@ -35,12 +36,11 @@ public class TestGUI {
         TestGUI swingControlDemo = new TestGUI();
         swingControlDemo.initialize();
     }
+
     private void prepareGUI(){
 
         mainFrame = new JFrame("Moving Object");
         mainFrame.setSize(1000,800);
-
-//      headerLabel = new JLabel("",JLabel.CENTER );
 
         mainFrame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent windowEvent){
@@ -50,22 +50,32 @@ public class TestGUI {
 
         mainFrame.setVisible(true);
     }
+
     private void initialize(){
-        mainFrame.getContentPane().removeAll();
-        mainFrame.revalidate();
-        mainFrame.setLayout(new GridLayout(3,3));
-        JButton insertButton = new JButton("Insert Data");
-        JButton queryButton = new JButton("Query Data");
+        JTabbedPane jtp = new JTabbedPane();
+        mainFrame.add(jtp);
 
-        insertButton.setPreferredSize(new Dimension(60, 40));
-        queryButton.setPreferredSize(new Dimension(60, 40));
+        JPanel jp1 = new JPanel();
+        JPanel jp2 = new JPanel();
+        JPanel jp3 = new JPanel();
+        JPanel jp4 = new JPanel();
 
-        insertButton.setActionCommand("Insert");
-        queryButton.setActionCommand("Query");
+        JLabel label1 = new JLabel();
+        label1.setText("Config");
+        jtp.addTab("Config", jp1);
 
-        insertButton.addActionListener(new ButtonClickListener());
-        queryButton.addActionListener(new ButtonClickListener());
+        jtp.addTab("Create", jp2);
 
+        JLabel label3 = new JLabel();
+        label3.setText("Insert");
+        jp3.add(label3);
+        jtp.addTab("Insert", jp3);
+
+        jtp.addTab("Query", jp4);
+
+
+        //CONFIG
+        jp1.setLayout(new GridLayout(3,3));
         JPanel p1 = new JPanel();
         JPanel p2 = new JPanel();
         JPanel p3 = new JPanel();
@@ -74,125 +84,145 @@ public class TestGUI {
         JPanel p6 = new JPanel();
         JPanel p7 = new JPanel();
         JPanel p8 = new JPanel();
-        controlPanel = new JPanel();
-        controlPanel.setLayout(new GridLayout(2,1));
+        JPanel p9 = new JPanel();
+        p2.add(label1);
 
-//      mainFrame.add(headerLabel);
-        mainFrame.add(p1);
-        mainFrame.add(p2);
-        mainFrame.add(p3);
-        mainFrame.add(p4);
-        mainFrame.add(controlPanel);
-        mainFrame.add(p5);
-        mainFrame.add(p6);
-        mainFrame.add(p7);
-        mainFrame.add(p8);
+//        Border borderline = BorderFactory.createLineBorder(Color.black);
 
-        controlPanel.add(insertButton);
-        controlPanel.add(queryButton);
-
-        mainFrame.setVisible(true);
-    }
-
-    private void showQueryPanel() {
-        mainFrame.getContentPane().removeAll();
-        mainFrame.setLayout(new GridLayout(2,3));
-        JLabel inputKeyspace = new JLabel("Input Keyspace: ", JLabel.CENTER);
+        JLabel inputKeyspace = new JLabel("Input Keyspace : ", JLabel.CENTER);
         keyspace = new JTextArea(1, 15);
-        JLabel inputServer = new JLabel("Input Server: ", JLabel.CENTER);
+        JLabel inputServer = new JLabel("Input Server      : ", JLabel.CENTER);
         server = new JTextArea(1, 15);
-        JLabel queryLabel = new JLabel("Input Query: ", JLabel.CENTER);
-        queryText = new JTextArea(5,20);
-        JScrollPane sp1 = new JScrollPane(queryText);
-        queryText.setLineWrap(true);
-        queryText.setWrapStyleWord(true);
+
+        JButton setButton = new JButton("Set");
+        setButton.setActionCommand("Set");
+        setButton.addActionListener(new ButtonClickListener());
+
+        p5.add(inputKeyspace);
+        p5.add(keyspace);
+        p5.add(inputServer);
+        p5.add(server);
+        p5.add(setButton);
+
+//        p5.setBorder(borderline);
+
+        jp1.add(p1);
+        jp1.add(p2);
+        jp1.add(p3);
+        jp1.add(p4);
+        jp1.add(p5);
+        jp1.add(p6);
+        jp1.add(p7);
+        jp1.add(p8);
+        jp1.add(p9);
+
+        //QUERY
+        jp4.setLayout(new GridLayout(2,1));
+        JPanel p10 = new JPanel();
+        JPanel p11 = new JPanel();
+
+        JLabel inputQuery = new JLabel("Query :        ");
+        query = new JTextArea(10, 75);
+        query.setLineWrap(true);
 
         JButton submitButton = new JButton("Submit");
-        JButton cancelButton = new JButton("Cancel");
-
         submitButton.setActionCommand("Submit");
-        cancelButton.setActionCommand("Cancel");
-
         submitButton.addActionListener(new ButtonClickListener());
-        cancelButton.addActionListener(new ButtonClickListener());
 
-        JButton enterButton = new JButton("Enter");
-        enterButton.setActionCommand("Enter");
-        enterButton.addActionListener(new ButtonClickListener());
+        JButton clearButton = new JButton("Clear");
+        clearButton.setActionCommand("Clear");
+        clearButton.addActionListener(new ButtonClickListener());
 
-        console.setLineWrap(true);
-        console.setWrapStyleWord(true);
-        JScrollPane sp2 = new JScrollPane(console);
+        p10.add(inputQuery);
+        p10.add(query);
+        p10.add(submitButton);
+        p10.add(clearButton);
 
-        JButton homeButton = new JButton("Home");
-        homeButton.setActionCommand("Home");
-        homeButton.addActionListener(new ButtonClickListener());
+        JLabel showResult = new JLabel("Result : ");
 
         JButton visualizeButton = new JButton("Visualize");
         visualizeButton.setActionCommand("Visualize");
         visualizeButton.addActionListener(new ButtonClickListener());
 
-        JPanel subP1 = new JPanel();
-        JPanel subP2 = new JPanel();
-        subP2.add(inputServer);
-        subP2.add(server);
-        subP2.add(inputKeyspace);
-        subP2.add(keyspace);
-        JPanel subP3 = new JPanel();
-        subP3.add(enterButton);
-        JPanel subP4 = new JPanel();
-        JPanel subP5 = new JPanel();
-        JPanel subP6 = new JPanel();
-        JPanel subP7 = new JPanel();
-        JPanel subP8 = new JPanel();
-        JPanel subP9 = new JPanel();
-        JPanel subP10 = new JPanel();
+        console.setLineWrap(true);
+        JScrollPane sp = new JScrollPane(console);
 
-        JPanel p1 = new JPanel();
-        p1.setLayout(new GridLayout(6,1));
-        p1.add(subP1);
-        p1.add(subP2);
-        p1.add(subP3);
-        p1.add(subP4);
-        p1.add(subP5);
-        p1.add(subP6);
+        p11.add(showResult);
+        p11.add(sp);
+        p11.add(visualizeButton);
 
-        JPanel p2 = new JPanel();
-        p2.add(queryLabel);
-        p2.add(sp1);
-        p2.add(submitButton);
-        p2.add(cancelButton);
-        JPanel p3 = new JPanel();
-        JPanel p4 = new JPanel();
-        JPanel p5 = new JPanel();
-        p5.add(sp2);
-        p5.add(visualizeButton);
-        JPanel p6 = new JPanel();
-        p6.setLayout(new GridLayout(8,1));
-        p6.add(subP1);
-        p6.add(subP4);
-        p6.add(subP5);
-        p6.add(subP6);
-        p6.add(subP7);
-        p6.add(subP8);
-        p6.add(subP9);
-        p6.add(subP10);
-        subP10.add(homeButton);
+        jp4.add(p10);
+        jp4.add(p11);
 
-//      mainFrame.add(headerLabel);
-        mainFrame.add(p1);
-        mainFrame.add(p2);
-        mainFrame.add(p3);
-        mainFrame.add(p4);
-        mainFrame.add(p5);
-        mainFrame.add(p6);
-        mainFrame.revalidate();
+        //INSERT
+        jp3.setLayout(new GridLayout(3,3));
+        JPanel p12 = new JPanel();
+        JPanel p13 = new JPanel();
+        JPanel p14 = new JPanel();
+        JPanel p15 = new JPanel();
+        JPanel p16 = new JPanel();
+        JPanel p17 = new JPanel();
+        JPanel p18 = new JPanel();
+        JPanel p19 = new JPanel();
+        JPanel p20 = new JPanel();
+        p13.add(label3);
+
+        JLabel inputTabel = new JLabel("Table Name    : ", JLabel.CENTER);
+        tabel = new JTextArea(1, 15);
+        JLabel inputFilepath = new JLabel("Input Filepath : ", JLabel.CENTER);
+        filepath = new JTextArea(1, 15);
+
+        JButton insertButton = new JButton("Insert");
+        insertButton.setActionCommand("Insert");
+        insertButton.addActionListener(new ButtonClickListener());
+
+        p16.add(inputTabel);
+        p16.add(tabel);
+        p16.add(inputFilepath);
+        p16.add(filepath);
+        p16.add(insertButton);
+
+        jp3.add(p12);
+        jp3.add(p13);
+        jp3.add(p14);
+        jp3.add(p15);
+        jp3.add(p16);
+        jp3.add(p17);
+        jp3.add(p18);
+        jp3.add(p19);
+        jp3.add(p20);
+
+        //CREATE
+        jp2.setLayout(new GridLayout(3,1));
+        JPanel p21 = new JPanel();
+        JPanel p22 = new JPanel();
+        JPanel p23 = new JPanel();
+
+        JLabel createTable = new JLabel("Create Table : ");
+        tableQuery = new JTextArea(10, 78);
+
+        JButton createButton = new JButton("Create");
+        createButton.setActionCommand("Create");
+        createButton.addActionListener(new ButtonClickListener());
+
+        p22.add(createTable);
+        p22.add(tableQuery);
+        p22.add(createButton);
+
+        jp2.add(p21);
+        jp2.add(p22);
+        jp2.add(p23);
+
     }
 
-    private class ButtonClickListener  implements ActionListener {
+    private class ButtonClickListener implements ActionListener {
         public void actionPerformed(ActionEvent e) {
             String command = e.getActionCommand();
-            if ( command.equals( "Submit" ) ) {
+            if (command.equals("Set")) {
+                serverAccessed = server.getText();
+                keyspaceAccessed = keyspace.getText();
+            }
+            else if (command.equals("Submit")) {
                 result = null;
                 indexPoint = -1;
                 indexPoints = -1;
@@ -200,9 +230,9 @@ public class TestGUI {
                 console.setText("");
                 System.setOut(out);
                 System.setErr(out);
-                String query = queryText.getText();
+                String queryText = query.getText();
                 QueryEngine qe = new QueryEngine(serverAccessed, keyspaceAccessed);
-                result = qe.getResult(query);
+                result = qe.getResult(queryText);
                 if (result!=null) {
                     for (int j=0; j<result[0].length; j++) {
                         if (result[0][j] != null) {
@@ -219,188 +249,26 @@ public class TestGUI {
 
                     }
                 }
-
             }
-            else if( command.equals( "Cancel" ) )  {
-                queryText.setText("");
-            }
-            else if ( command.equals("Insert")) {
-                showInsertPanel();
-            }
-            else if (command.equals("Query")) {
-                showQueryPanel();
-            }
-            else if (command.equals("Enter")) {
-                serverAccessed = server.getText();
-                keyspaceAccessed = keyspace.getText();
-            }
-            else if (command.equals("Home")) {
-                initialize();
+            else if (command.equals("Clear")) {
+                query.setText("");
             }
             else if (command.equals("Visualize")) {
                 showMap();
-
+            }
+            else if (command.equals("Insert")) {
+                try {
+                    AddCSVToDB acdb = new AddCSVToDB(keyspace.getText(), server.getText(), tabel.getText(), filepath.getText());
+                    acdb.addToDB();
+                } catch (Exception err) {
+                    err.printStackTrace();
+                }
             }
             else if (command.equals("Create")) {
                 QueryEngine qe = new QueryEngine(serverAccessed, keyspaceAccessed);
-                qe.originalQuery(queryText.getText());
-            }
-            else if (command.equals("InsertData")) {
-                try {
-                    AddCSVToDB acdb = new AddCSVToDB(keyspace.getText(), server.getText(), table.getText(), file.getText());
-                    acdb.addToDB();
-                } catch (Exception err) {
-                    err.printStackTrace();
-                }
-            }
-            else if (command.equals("point")) {
-                ExecCommand ec = new ExecCommand();
-                String output = ec.executeCommand("python point_preprocess.py " + file.getText());
-                System.out.println(output);
-                try {
-                    AddCSVToDB acdb = new AddCSVToDB(keyspace.getText(), server.getText(), table.getText(), "new.csv");
-                    acdb.addToDB();
-                } catch (Exception err) {
-                    err.printStackTrace();
-                }
-            }
-            else if (command.equals("points")) {
-
-            }
-            else if (command.equals("line")) {
-
-            }
-            else if (command.equals("mpoint")) {
-
+                qe.originalQuery(tableQuery.getText());
             }
         }
-    }
-
-    private void showInsertPanel() {
-        mainFrame.getContentPane().removeAll();
-        mainFrame.setLayout(new GridLayout(2,3));
-        JLabel inputKeyspace = new JLabel("Input Keyspace: ", JLabel.CENTER);
-        keyspace = new JTextArea(1, 15);
-        JLabel inputServer = new JLabel("Input Server: ", JLabel.CENTER);
-        server = new JTextArea(1, 15);
-        JLabel queryLabel = new JLabel("Create Table: ", JLabel.CENTER);
-        queryText = new JTextArea(5,20);
-        JScrollPane sp1 = new JScrollPane(queryText);
-        queryText.setLineWrap(true);
-        queryText.setWrapStyleWord(true);
-
-        JButton createButton = new JButton("Create");
-        JButton cancelButton = new JButton("Cancel");
-
-        createButton.setActionCommand("Create");
-        cancelButton.setActionCommand("Cancel");
-
-        createButton.addActionListener(new ButtonClickListener());
-        cancelButton.addActionListener(new ButtonClickListener());
-
-        JButton homeButton = new JButton("Home");
-        homeButton.setActionCommand("Home");
-        homeButton.addActionListener(new ButtonClickListener());
-
-        JButton enterButton = new JButton("Enter");
-        enterButton.setActionCommand("Enter");
-        enterButton.addActionListener(new ButtonClickListener());
-
-        JLabel inputTable = new JLabel("Input Table: ", JLabel.CENTER);
-        table = new JTextArea(1, 15);
-        JLabel inputFile = new JLabel("Input File: ", JLabel.CENTER);
-        file = new JTextArea(1, 15);
-
-//        JButton preprocessPoint = new JButton("Preprocess Point and Add");
-//        JButton preprocessPoints = new JButton("Preprocess Points and Add");
-//        JButton preprocessLine = new JButton("Preprocess Line and Add");
-//        JButton preprocessMPoint = new JButton("Preprocess MPoint and Add");
-//
-//        preprocessPoint.setActionCommand("point");
-//        preprocessPoints.setActionCommand("points");
-//        preprocessLine.setActionCommand("line");
-//        preprocessMPoint.setActionCommand("mpoint");
-//
-//        preprocessPoint.addActionListener(new ButtonClickListener());
-//        preprocessPoints.addActionListener(new ButtonClickListener());
-//        preprocessLine.addActionListener(new ButtonClickListener());
-//        preprocessMPoint.addActionListener(new ButtonClickListener());
-
-        JButton insertData = new JButton("Insert");
-        insertData.setActionCommand("InsertData");
-        insertData.addActionListener(new ButtonClickListener());
-
-        JPanel subP1 = new JPanel();
-        JPanel subP2 = new JPanel();
-        subP2.add(inputServer);
-        subP2.add(server);
-        subP2.add(inputKeyspace);
-        subP2.add(keyspace);
-        JPanel subP3 = new JPanel();
-        subP3.add(enterButton);
-        JPanel subP4 = new JPanel();
-        JPanel subP5 = new JPanel();
-        JPanel subP6 = new JPanel();
-        JPanel subP7 = new JPanel();
-        JPanel subP8 = new JPanel();
-        JPanel subP9 = new JPanel();
-        JPanel subP10 = new JPanel();
-        JPanel subP11 = new JPanel();
-        JPanel subP12 = new JPanel();
-        JPanel subP13 = new JPanel();
-
-        subP11.add(inputTable);
-        subP11.add(table);
-        subP11.add(inputFile);
-        subP11.add(file);
-        subP11.add(insertData);
-//        subP13.add(preprocessPoint);
-//        subP13.add(preprocessPoints);
-//        subP13.add(preprocessLine);
-//        subP13.add(preprocessMPoint);
-
-        JPanel p1 = new JPanel();
-        p1.setLayout(new GridLayout(6,1));
-        p1.add(subP1);
-        p1.add(subP2);
-        p1.add(subP3);
-        p1.add(subP4);
-        p1.add(subP5);
-        p1.add(subP6);
-
-        JPanel p2 = new JPanel();
-        p2.add(queryLabel);
-        p2.add(sp1);
-        p2.add(createButton);
-        p2.add(cancelButton);
-        JPanel p3 = new JPanel();
-        p3.setLayout(new GridLayout(3,1));
-        p3.add(subP11);
-        p3.add(subP12);
-        p3.add(subP13);
-        JPanel p4 = new JPanel();
-        JPanel p5 = new JPanel();
-        JPanel p6 = new JPanel();
-        p6.setLayout(new GridLayout(8,1));
-        p6.add(subP1);
-        p6.add(subP4);
-        p6.add(subP5);
-        p6.add(subP6);
-        p6.add(subP7);
-        p6.add(subP8);
-        p6.add(subP9);
-        p6.add(subP10);
-        subP10.add(homeButton);
-
-//      mainFrame.add(headerLabel);
-        mainFrame.add(p1);
-        mainFrame.add(p2);
-        mainFrame.add(p3);
-        mainFrame.add(p4);
-        mainFrame.add(p5);
-        mainFrame.add(p6);
-        mainFrame.revalidate();
-
     }
 
     private void showMap() {
@@ -448,7 +316,9 @@ public class TestGUI {
                 content = content + "];\n";
                 content = content + "\t\t\tvar polyline = L.polyline(latlngs, {color: 'red'}).addTo(mymap);";
             }
-            content = precontent + content + postContent;
+            String view = "   \t\t\tmymap.setView([" + ((Line)result[0][indexLine]).point_set.get(0).ordinat +","+ ((Line)result[0][indexLine]).point_set.get(0).absis + "], 18);\n";
+            view = view + "   \t\t\tvar marker = L.marker([" +  ((Line)result[0][indexLine]).point_set.get(0).ordinat + "," +  ((Line)result[0][indexLine]).point_set.get(0).absis + "]).addTo(mymap);\n";
+            content = precontent + content + view + postContent;
         }
         else if (indexPoints!=1) {
             for (int i=0; i<result.length; i++) {

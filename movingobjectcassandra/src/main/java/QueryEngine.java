@@ -19,6 +19,8 @@ public class QueryEngine {
     public static Object[][] finalResult;
     private String server;
     private String keyspace;
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_RESET = "\u001B[0m";
 
     public QueryEngine(String serverAccessed, String keyspaceAccessed) {
         server = serverAccessed;
@@ -299,26 +301,35 @@ public class QueryEngine {
                     }
                 }
 
+                for (int k=0; k<plainSelect.getSelectItems().size(); k++) {
+                    System.out.print(plainSelect.getSelectItems().get(k) + " | ");
+                }
+
+                System.out.println();
+
                 for (int j=0; j<rowFR; j++) {
                     for (int k=0; k<plainSelect.getSelectItems().size(); k++) {
-                        if (finalResult[j][k].getClass() == Point.class) {
-                            ((Point) finalResult[j][k]).print();
+                        if (finalResult[j][k]!=null) {
+                            if (finalResult[j][k].getClass() == Point.class) {
+                                ((Point) finalResult[j][k]).print();
+                            }
+                            else if (finalResult[j][k].getClass() == Points.class) {
+                                ((Points) finalResult[j][k]).print();
+                            }
+                            else if (finalResult[j][k].getClass() == Line.class) {
+                                ((Line) finalResult[j][k]).print();
+                            }
+                            else if (finalResult[j][k].getClass() == MPComponent.class) {
+                                ((MPComponent) finalResult[j][k]).print();
+                            }
+                            else if (finalResult[j][k].getClass() == MPoint.class) {
+                                ((MPoint) finalResult[j][k]).print();
+                            }
+                            else {
+                                System.out.print(finalResult[j][k] + " | ");
+                            }
                         }
-                        else if (finalResult[j][k].getClass() == Points.class) {
-                            ((Points) finalResult[j][k]).print();
-                        }
-                        else if (finalResult[j][k].getClass() == Line.class) {
-                            ((Line) finalResult[j][k]).print();
-                        }
-                        else if (finalResult[j][k].getClass() == MPComponent.class) {
-                            ((MPComponent) finalResult[j][k]).print();
-                        }
-                        else if (finalResult[j][k].getClass() == MPoint.class) {
-                            ((MPoint) finalResult[j][k]).print();
-                        }
-                        else {
-                            System.out.print(finalResult[j][k] + " ");
-                        }
+
 
                     }
                     System.out.println();
@@ -394,10 +405,10 @@ public class QueryEngine {
     public static MPoint convertUDTValueToMPoint(Row r, String attr) {
         MPoint mp = new MPoint();
         mp.no_components = r.getUDTValue(attr).getInt(1);
-        mp.component_set = new HashSet<MPComponent>();
+        mp.component_set = new ArrayList<MPComponent>();
         mp.lifespan[0] = r.getUDTValue(attr).getTupleValue(2).getTimestamp(0);
         mp.lifespan[1] = r.getUDTValue(attr).getTupleValue(2).getTimestamp(1);
-        Set<UDTValue> mpoints = r.getUDTValue(attr).getSet(3, UDTValue.class);
+        List<UDTValue> mpoints = r.getUDTValue(attr).getList(3, UDTValue.class);
         for (UDTValue uv : mpoints) {
             MPComponent mpc = new MPComponent();
 //            System.out.println(uv.getUDTValue(0).get(0, Double.class));

@@ -24,11 +24,11 @@ public class Points {
     }
 
     public void print() {
-        System.out.println("[");
+        System.out.print("[");
         for (Point p : point_set) {
             System.out.print(p.absis + "," + p.ordinat);
             System.out.print(";");
         }
-        System.out.print("]");
+        System.out.print("] | ");
     }
 }
