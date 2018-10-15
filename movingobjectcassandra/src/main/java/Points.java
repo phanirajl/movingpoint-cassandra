@@ -12,14 +12,15 @@ public class Points {
             absisList.add(p.absis);
             ordinatList.add(p.ordinat);
         }
-        Point p = new Point();
-        p.absis = Collections.min(absisList);
-        p.ordinat = Collections.min(ordinatList);
-        bounding_box[0] = p;
+        Point p1 = new Point();
+        p1.absis = Collections.min(absisList);
+        p1.ordinat = Collections.min(ordinatList);
+        bounding_box[0] = p1;
 
-        p.absis = Collections.max(absisList);
-        p.ordinat = Collections.max(ordinatList);
-        bounding_box[1] = p;
+        Point p2 = new Point();
+        p2.absis = Collections.max(absisList);
+        p2.ordinat = Collections.max(ordinatList);
+        bounding_box[1] = p2;
 
     }
 
@@ -31,4 +32,16 @@ public class Points {
         }
         System.out.print("] | ");
     }
+
+    public void removePoint(Point po) {
+
+        for (Iterator<Point> iterator = point_set.iterator(); iterator.hasNext();) {
+            Point p =  iterator.next();
+            if (p.absis == po.absis && p.ordinat == po.ordinat) {
+                iterator.remove();
+            }
+        }
+    }
+
+
 }

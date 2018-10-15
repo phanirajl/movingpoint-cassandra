@@ -58,12 +58,16 @@ public class CustomFunction {
         }
         else if (name.equals("val")) {
             Object o = stack.pop();
-            return (val((MPComponent)o));
+            if (o!=null) {
+                return (val((MPComponent)o));
+            }
 
         }
         else if (name.equals("inst")) {
             Object o = stack.pop();
-            return (inst((MPComponent)o));
+            if (o!=null) {
+                return (inst((MPComponent)o));
+            }
         }
         else if (name.equals("intersection")) {
             Object o1 = stack.pop();
@@ -124,6 +128,18 @@ public class CustomFunction {
                     return intersection(ps1, (Points) o1);
                 }
             }
+            else {
+                if (o1.getClass() == Point.class && o2.getClass() == Points.class) {
+                    return intersection((Points)o2, (Point)o1);
+                }
+                else if (o1.getClass() == Points.class && o2.getClass() == Points.class) {
+                    return intersection((Points)o2, (Points)o1);
+                }
+                else if (o1.getClass() == Points.class && o2.getClass() == Point.class) {
+                    return intersection((Point) o2, (Points) o1);
+                }
+
+            }
         }
         else if (name.equals("intersects")) {
             Object o1 = stack.pop();
@@ -155,7 +171,7 @@ public class CustomFunction {
             }
             return intersects(ps1,ps2);
         }
-        if (name.equals("union")) {
+        if (name.equals("unionmp")) {
             Object o1 = stack.pop();
             Object o2 = stack.pop();
 
@@ -214,8 +230,20 @@ public class CustomFunction {
                     return union(ps1, (Points) o1);
                 }
             }
+            else {
+                if (o1.getClass() == Point.class && o2.getClass() == Points.class) {
+                    return union((Points)o2, (Point)o1);
+                }
+                else if (o1.getClass() == Points.class && o2.getClass() == Points.class) {
+                    return union((Points)o2, (Points)o1);
+                }
+                else if (o1.getClass() == Points.class && o2.getClass() == Point.class) {
+                    return union((Point) o2, (Points) o1);
+                }
+
+            }
         }
-        else if (name.equals("minus")) {
+        else if (name.equals("minusmp")) {
             Object o1 = stack.pop();
             Object o2 = stack.pop();
 
@@ -256,12 +284,21 @@ public class CustomFunction {
                 Row r = result[index];
                 if (r.getColumnDefinitions().getType(s[1]).toString().contains(".points>") && o1.getClass() == Point.class) {
                     Points ps = QueryEngine.convertUDTValueToPoints(r, s[1]);
-                    return union(ps, (Point) o1);
+                    return minus(ps, (Point) o1);
                 }
                 else if (r.getColumnDefinitions().getType(s[1]).toString().contains(".points>") && o1.getClass() == Points.class) {
                     Points ps1 = QueryEngine.convertUDTValueToPoints(r, s[1]);
-                    return union(ps1, (Points) o1);
+                    return minus(ps1, (Points) o1);
                 }
+            }
+            else {
+                if (o1.getClass() == Point.class) {
+                    return minus((Points)o2, (Point)o1);
+                }
+                else {
+                    return minus((Points)o2, (Points)o1);
+                }
+
             }
         }
         else if (name.equals("crossings")) {
@@ -333,7 +370,7 @@ public class CustomFunction {
             Object o = stack.pop();
             MPoint mp = new MPoint();
 
-            if (o.getClass() == String.class) {
+            if (o!= null && o.getClass() == String.class) {
                 String[] s = o.toString().split("\\.");
                 int index = QueryEngine.getIndexByTableName(s[0], tables);
                 Row r = result[index];
@@ -480,6 +517,96 @@ public class CustomFunction {
             }
             return passes(mp,p);
         }
+        else if (name.equals("at")) {
+            Object o1 = stack.pop();
+            Object o2 = stack.pop();
+            MPoint mp = new MPoint();
+            Point p = new Point();
+
+            if (o2.getClass() == String.class) {
+                String[] s = o2.toString().split("\\.");
+                int index = QueryEngine.getIndexByTableName(s[0], tables);
+                Row r = result[index];
+                if (r.getColumnDefinitions().getType(s[1]).toString().contains(".mpoint>")) {
+                    mp = QueryEngine.convertUDTValueToMPoint(r, s[1]);
+                }
+            }
+            else {
+                mp = (MPoint) o2;
+            }
+
+            if (o1.getClass() == String.class) {
+                String[] s = o1.toString().split("\\.");
+                int index = QueryEngine.getIndexByTableName(s[0], tables);
+                Row r = result[index];
+                p = QueryEngine.convertUDTValueToPoint(r, s[1]);
+            }
+            else {
+                p = (Point) o1;
+            }
+            return at(mp, p);
+        }
+        else if (name.equals("point")) {
+            Object o1 = stack.pop();
+            Object o2 = stack.pop();
+            Double d1 = Double.parseDouble(o1.toString());
+            Double d2 = Double.parseDouble(o2.toString());
+
+            return point(d2, d1);
+
+        }
+        else if (name.equals("period")) {
+            Object o1 = stack.pop();
+            Object o2 = stack.pop();
+            Date d1 = new Date();
+            Date d2 = new Date();
+
+            String s1 = o1.toString();
+            String s2 = o2.toString();
+
+            try {
+                d1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(s1);
+                d2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(s2);
+                return period(d2, d1);
+            }
+            catch (java.text.ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        else if (name.equals("initial")) {
+            Object o = stack.pop();
+            MPoint mp = new MPoint();
+
+            if (o.getClass() == String.class) {
+                String[] s = o.toString().split("\\.");
+                int index = QueryEngine.getIndexByTableName(s[0], tables);
+                Row r = result[index];
+                if (r.getColumnDefinitions().getType(s[1]).toString().contains(".mpoint>")) {
+                    mp = QueryEngine.convertUDTValueToMPoint(r, s[1]);
+                }
+            }
+            else {
+                mp = (MPoint) o;
+            }
+            return initial(mp);
+        }
+        else if (name.equals("final")) {
+            Object o = stack.pop();
+            MPoint mp = new MPoint();
+
+            if (o.getClass() == String.class) {
+                String[] s = o.toString().split("\\.");
+                int index = QueryEngine.getIndexByTableName(s[0], tables);
+                Row r = result[index];
+                if (r.getColumnDefinitions().getType(s[1]).toString().contains(".mpoint>")) {
+                    mp = QueryEngine.convertUDTValueToMPoint(r, s[1]);
+                }
+            }
+            else {
+                mp = (MPoint) o;
+            }
+            return finalmp(mp);
+        }
         return null;
     }
 
@@ -612,7 +739,7 @@ public class CustomFunction {
     }
 
     public Points minus(Points ps, Point p) {
-        ps.point_set.remove(p);
+        ps.removePoint(p);
         ps.setBoundingBox();
         ps.no_points = ps.point_set.size();
         return ps;
@@ -667,18 +794,19 @@ public class CustomFunction {
     }
 
     public Line trajectory(MPoint mp) {
-        Line l = new Line();
-        for (MPComponent mpc : mp.component_set) {
-            l.point_set.add(val(mpc));
+        if (mp!=null) {
+            Line l = new Line();
+            for (MPComponent mpc : mp.component_set) {
+                l.point_set.add(val(mpc));
+            }
+            l.setBoundingBox();
+            l.no_points=l.point_set.size();
+            return l;
         }
-        l.setBoundingBox();
-        l.no_points=l.point_set.size();
-        return l;
+        return null;
     }
 
     public MPComponent atinstant(MPoint mp, Date d) {
-//        System.out.println(mp.lifespan[0]);
-//        System.out.println(mp.lifespan[1]);
         if (mp.lifespan[0].after(d) || mp.lifespan[1].before(d)) {
             return null;
         }
@@ -726,12 +854,50 @@ public class CustomFunction {
     public boolean passes(MPoint mp, Point p) {
         if (p.absis >= mp.bounding_box[0].absis && p.absis <= mp.bounding_box[1].absis && p.ordinat >= mp.bounding_box[0].ordinat && p.ordinat <= mp.bounding_box[1].ordinat) {
             for (MPComponent mpc : mp.component_set) {
-                if (val(mpc) == p) {
+                if (val(mpc).absis == p.absis && val(mpc).ordinat == p.ordinat) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    public MPoint at (MPoint mp, Point p) {
+        MPoint result = new MPoint();
+        if (p.absis >= mp.bounding_box[0].absis && p.absis <= mp.bounding_box[1].absis && p.ordinat >= mp.bounding_box[0].ordinat && p.ordinat <= mp.bounding_box[1].ordinat) {
+            for (MPComponent mpc : mp.component_set) {
+                if (val(mpc).absis == p.absis && val(mpc).ordinat == p.ordinat) {
+                    result.component_set.add(mpc);
+                }
+            }
+            result.setLifespan();
+            result.setBoundingBox();
+            result.no_components = mp.component_set.size();
+            return result;
+        }
+        return null;
+    }
+
+    public Point point(double a, double o) {
+        Point p = new Point();
+        p.absis = a;
+        p.ordinat = o;
+        return p;
+    }
+
+    public Date[] period(Date d1, Date d2) {
+        Date[] periods = new Date[2];
+        periods[0] = d1;
+        periods[1] = d2;
+        return periods;
+    }
+
+    public MPComponent initial(MPoint mp) {
+        return atinstant(mp, mp.lifespan[0]);
+    }
+
+    public MPComponent finalmp(MPoint mp) {
+        return atinstant(mp, mp.lifespan[1]);
     }
 
 }

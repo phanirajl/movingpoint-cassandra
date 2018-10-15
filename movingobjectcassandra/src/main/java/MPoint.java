@@ -19,13 +19,16 @@ public class MPoint {
             ordinatList.add(mpc.p.ordinat);
         }
         Point p = new Point();
-        p.absis = Collections.min(absisList);
-        p.ordinat = Collections.max(ordinatList);
-        bounding_box[0] = p;
+        if (absisList.size() >= 1 && ordinatList.size() >= 1) {
+            p.absis = Collections.min(absisList);
+            p.ordinat = Collections.max(ordinatList);
+            bounding_box[0] = p;
 
-        p.absis = Collections.max(absisList);
-        p.ordinat = Collections.max(ordinatList);
-        bounding_box[1] = p;
+            p.absis = Collections.max(absisList);
+            p.ordinat = Collections.max(ordinatList);
+            bounding_box[1] = p;
+        }
+
 
     }
 
@@ -34,11 +37,15 @@ public class MPoint {
         for (MPComponent mpc : component_set) {
             dateList.add(mpc.t);
         }
+//        System.out.println("size = " + dateList.size());
         Date d;
-        d = Collections.min(dateList);
-        lifespan[0] = d;
-        d = Collections.max(dateList);
-        lifespan[1] = d;
+        if (dateList.size() >= 1) {
+            d = Collections.min(dateList);
+            lifespan[0] = d;
+            d = Collections.max(dateList);
+            lifespan[1] = d;
+        }
+
     }
 
     public void print() {

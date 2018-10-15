@@ -12,6 +12,8 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import java.util.*;
+import java.lang.*;
+import java.util.concurrent.TimeUnit;
 
 public class QueryEngine {
 
@@ -19,16 +21,16 @@ public class QueryEngine {
     public static Object[][] finalResult;
     private String server;
     private String keyspace;
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_RESET = "\u001B[0m";
 
     public QueryEngine(String serverAccessed, String keyspaceAccessed) {
         server = serverAccessed;
         keyspace = keyspaceAccessed;
+        System.setProperty("com.datastax.driver.NATIVE_TRANSPORT_MAX_FRAME_SIZE_IN_MB", "2000");
         tables.clear();
     }
 
     public List<String> getColList(String table) {
+
         Cluster cluster = Cluster.builder().addContactPoint(server).build();
         Session session = cluster.connect(keyspace);
 
@@ -47,16 +49,38 @@ public class QueryEngine {
         Cluster cluster = Cluster.builder().addContactPoint(server).build();
         Session session = cluster.connect(keyspace);
 
-        session.execute(q);
+//        Object[][] o = new Object[0][0];
 
-        session.close();
-        cluster.close();
+        try {
+            long startTime = System.nanoTime();
+//            ResultSet results = session.executeAsync(q).get(3000000, TimeUnit.MILLISECONDS);
+            ResultSet results = session.execute(new SimpleStatement(q).setReadTimeoutMillis(150000));
+            long endTime = System.nanoTime();
+            long duration = (endTime - startTime) / 1000000;
+            System.out.println(duration + " ms");
+            System.out.println(results.all());
 
+            session.close();
+            cluster.close();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+//        return o;
     }
 
-    public Object[][] getResult(String q) {
+    public MPQueryResult mpQuery(String q) {
+        MPQueryResult res =  new MPQueryResult();
         try {
-
+            long startOverall = System.nanoTime();
+            if (q.contains("minus(")) {
+                q = q.replaceAll("minus", "minusmp");
+            }
+            if (q.contains("union(")) {
+                q = q.replaceAll("union", "unionmp");
+            }
             Statement statement = CCJSqlParserUtil.parse(q);
             Select selectStatement = (Select) statement;
             PlainSelect plainSelect = (PlainSelect) selectStatement.getSelectBody();
@@ -114,14 +138,10 @@ public class QueryEngine {
                         if (tables.get(getIndexByTableName(tableAttribute[0], tables)).where == null) {
                             tables.get(getIndexByTableName(tableAttribute[0], tables)).where = new HashSet<String>();
                         }
-                        String tableRealName = tables.get(getIndexByTableName(tableAttribute[0], tables)).tableRealName;
                         tables.get(getIndexByTableName(tableAttribute[0], tables)).where.add(tableAttribute[1] + operandWhere[1] + operandWhere[2]);
                     }
                 }
             }
-
-
-
             Cluster cluster = Cluster.builder().addContactPoint(server).build();
             Session session = cluster.connect(keyspace);
             for (int i=0; i<tables.size(); i++) {
@@ -129,8 +149,11 @@ public class QueryEngine {
                 ls.addAll(tables.get(i).attributes);
                 if (tables.get(i).where == null) {
                     String query = "select " + String.join(",", ls) + " from " + tables.get(i).tableRealName + ";";
-//                    System.out.println(query);
-                    ResultSet results = session.execute(query);
+                    long startTime = System.nanoTime();
+                    ResultSet results = session.execute(new SimpleStatement(query).setReadTimeoutMillis(150000));
+                    long endTime = System.nanoTime();
+                    long duration = (endTime - startTime) / 1000000;
+//                    System.out.println(duration + " ms");
                     List<Row> lr = new ArrayList<Row>();
                     lr.addAll(results.all());
                     tables.get(i).content = lr;
@@ -143,8 +166,11 @@ public class QueryEngine {
                     List<String> where = new ArrayList<String>();
                     where.addAll(tables.get(i).where);
                     String query = "select " + String.join(",", ls) + " from " + tables.get(i).tableRealName + " where " + String.join(" and ", where) + ";";
-//                    System.out.println(query);
-                    ResultSet results = session.execute(query);
+                    long startTime = System.nanoTime();
+                    ResultSet results = session.execute(new SimpleStatement(query).setReadTimeoutMillis(150000));
+                    long endTime = System.nanoTime();
+                    long duration = (endTime - startTime) / 1000000;
+//                    System.out.println(duration + " ms");
                     List<Row> lr = new ArrayList<Row>();
                     lr.addAll(results.all());
                     tables.get(i).content = lr;
@@ -161,9 +187,11 @@ public class QueryEngine {
             }
 
             Row[][] matrixRow = new Row[row][tables.size()];
+            int divider = 1;
             for (int j=0; j<tables.size(); j++) {
+                divider = divider * tables.get(j).content.size();
                 for (int i=0; i<row; i++) {
-                    matrixRow[i][j] = tables.get(j).content.get(i/(row/tables.get(j).content.size()));
+                    matrixRow[i][j] = tables.get(j).content.get((i/(row/divider))%tables.get(j).content.size());
                 }
             }
 
@@ -173,20 +201,15 @@ public class QueryEngine {
                 selected[i] = true;
             }
 
+
             if (functionContainedInWhere.size() > 0) {
                 for (String s: functionContainedInWhere) {
                     String[] splitS = s.split("((?<= = )|(?= = )|(?<= > )|(?= > )|(?<= < )|(?= < )|(?<= >= )|(?= >= ))|(?<= <= )|(?= <= )|(?<= != )|(?= != )");
 
                     if (splitS.length == 1) {
-                        //foreach row
-                        //eval(splitS[0])
-                        //kalau true
-                        //kalau false
-//                        System.out.println("masuk");
                         for (int i=0; i<row; i++) {
                             if (selected[i] == true) {
                                 boolean b = (Boolean) evaluate(splitS[0], matrixRow[i]);
-//                                System.out.println("b=" + b);
                                 if (b == false) {
                                     selected[i] = false;
                                 }
@@ -195,7 +218,6 @@ public class QueryEngine {
                     }
                     else if (splitS.length == 3) {
                         if (splitS[1].equals(" = ")) {
-                            //ini belum
                             for (int i=0; i<row; i++) {
                                 if (selected[i] == true) {
                                     String o = (String) evaluate(splitS[0], matrixRow[i]);
@@ -261,8 +283,6 @@ public class QueryEngine {
 
                 for (int i=0; i<plainSelect.getSelectItems().size(); i++) {
                     if (plainSelect.getSelectItems().get(i).toString().contains("(")) {
-                        //for each eval ke yg selected = true
-                        //masukin ke finalResult[][i]
                         int irowfr = 0;
                         for (int j=0; j<row; j++) {
                             if (selected[j] == true) {
@@ -272,7 +292,6 @@ public class QueryEngine {
                         }
                     }
                     else {
-                        //masukin ke finalResult[][i] yang selected = true
                         String[] s = plainSelect.getSelectItems().get(i).toString().split("\\.");
                         int irowfr = 0;
                         for (int j=0; j<row; j++) {
@@ -294,7 +313,6 @@ public class QueryEngine {
                                 else {
                                     finalResult[irowfr][i] = r.getObject(s[1]);
                                 }
-//                                System.out.println(finalResult[irowfr][i].getClass());
                                 irowfr++;
                             }
                         }
@@ -311,12 +329,15 @@ public class QueryEngine {
                     for (int k=0; k<plainSelect.getSelectItems().size(); k++) {
                         if (finalResult[j][k]!=null) {
                             if (finalResult[j][k].getClass() == Point.class) {
+                                res.indexPoint = k;
                                 ((Point) finalResult[j][k]).print();
                             }
                             else if (finalResult[j][k].getClass() == Points.class) {
+                                res.indexPoints = k;
                                 ((Points) finalResult[j][k]).print();
                             }
                             else if (finalResult[j][k].getClass() == Line.class) {
+                                res.indexLine = k;
                                 ((Line) finalResult[j][k]).print();
                             }
                             else if (finalResult[j][k].getClass() == MPComponent.class) {
@@ -324,6 +345,10 @@ public class QueryEngine {
                             }
                             else if (finalResult[j][k].getClass() == MPoint.class) {
                                 ((MPoint) finalResult[j][k]).print();
+                            }
+                            else if (finalResult[j][k].getClass().toString().contains("[Ljava.util.Date")) {
+                                Date[] d = (Date[]) finalResult[j][k];
+                                System.out.print(d[0] + ", " + d[1] + " | ");
                             }
                             else {
                                 System.out.print(finalResult[j][k] + " | ");
@@ -335,12 +360,35 @@ public class QueryEngine {
                     System.out.println();
                 }
             }
+            long endOverall = System.nanoTime();
+            long durationOverall = (endOverall - startOverall) / 1000000;
+            System.out.println(durationOverall + " ms");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+        res.indexPoint = -1;
+        res.indexPoints = -1;
+        res.indexLine = -1;
+        if (finalResult.length>0) {
+            for (int j=0; j<finalResult[0].length; j++) {
+                if (finalResult[0][j] != null) {
+                    if (finalResult[0][j].getClass() == Point.class) {
+                        res.indexPoint = j;
+                    }
+                    else if (finalResult[0][j].getClass() == Points.class) {
+                        res.indexPoints = j;
+                    }
+                    else if (finalResult[0][j].getClass() == Line.class) {
+                        res.indexLine = j;
+                    }
+                }
 
-        return finalResult;
+            }
+        }
+        res.result = finalResult;
+
+        return res;
 
     }
 
@@ -357,8 +405,8 @@ public class QueryEngine {
         String[] operatorSplit = s.split("((?<= = )|(?= = )|(?<= > )|(?= > )|(?<= < )|(?= < )|(?<= >= )|(?= >= ))|(?<= <= )|(?= <= )|(?<= != )|(?= != )");
         String[] functionSplit = operatorSplit[0].split("\\, |\\s+|\\(|\\)");
         for (int j=0; j<functionSplit.length; j++) {
-            if (functionSplit[j].contains(".")) {
-                functionSplit[j] = functionSplit[j].replace("'", "");
+            functionSplit[j] = functionSplit[j].replace("'", "");
+            if (functionSplit[j].contains(".") && !isNumeric(functionSplit[j])) {
                 String[] tableAttribute = functionSplit[j].split("\\.");
                 tables.get(getIndexByTableName(tableAttribute[0], tables)).attributes.add(tableAttribute[1]);
             }
@@ -375,8 +423,13 @@ public class QueryEngine {
             p.ordinat = points.get(i).getDouble(1);
             l.point_set.add(p);
         }
-        l.no_points = l.point_set.size();
-        l.setBoundingBox();
+        l.no_points = r.getUDTValue(attr).getInt(1);
+        l.bounding_box[0] = new Point();
+        l.bounding_box[1] = new Point();
+        l.bounding_box[0].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(0);
+        l.bounding_box[0].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(1);
+        l.bounding_box[1].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(0);
+        l.bounding_box[1].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(1);
         return l;
     }
 
@@ -397,8 +450,13 @@ public class QueryEngine {
             p.ordinat = uv.getDouble(1);
             ps.point_set.add(p);
         }
-        ps.no_points = ps.point_set.size();
-        ps.setBoundingBox();
+        ps.no_points = r.getUDTValue(attr).getInt(1);
+        ps.bounding_box[0] = new Point();
+        ps.bounding_box[1] = new Point();
+        ps.bounding_box[0].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(0);
+        ps.bounding_box[0].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(1);
+        ps.bounding_box[1].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(0);
+        ps.bounding_box[1].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(1);
         return ps;
     }
 
@@ -411,19 +469,23 @@ public class QueryEngine {
         List<UDTValue> mpoints = r.getUDTValue(attr).getList(3, UDTValue.class);
         for (UDTValue uv : mpoints) {
             MPComponent mpc = new MPComponent();
-//            System.out.println(uv.getUDTValue(0).get(0, Double.class));
             mpc.p.absis = uv.getUDTValue(0).getDouble(0);
             mpc.p.ordinat = uv.getUDTValue(0).getDouble(1);
             mpc.t = uv.getTimestamp(1);
             mp.component_set.add(mpc);
-//            System.out.println(mpc.t);
         }
+
+        mp.bounding_box[0] = new Point();
+        mp.bounding_box[1] = new Point();
+        mp.bounding_box[0].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(0);
+        mp.bounding_box[0].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(0).getDouble(1);
+        mp.bounding_box[1].absis = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(0);
+        mp.bounding_box[1].ordinat = r.getUDTValue(attr).getTupleValue(0).getUDTValue(1).getDouble(1);
         return mp;
     }
 
     public static Object evaluate(String expr, final Row[] result) throws JSQLParserException {
         final Stack<Object> stack = new Stack<Object>();
-//        System.out.println("expr=" + expr);
         Expression parseExpression = CCJSqlParserUtil.parseExpression(expr);
         ExpressionDeParser deparser = new ExpressionDeParser() {
             @Override
@@ -462,6 +524,7 @@ public class QueryEngine {
             public void visit(Function function) {
                 super.visit(function);
                 String name = function.getName();
+//                System.out.println(name);
                 CustomFunction cf = new CustomFunction();
                 stack.push(cf.getFunction(name, stack, result, tables));
             }
@@ -472,5 +535,14 @@ public class QueryEngine {
         parseExpression.accept(deparser);
 
         return stack.pop();
+    }
+
+    public static boolean isNumeric(String s) {
+        try {
+            double d = Double.parseDouble(s);
+        } catch (NumberFormatException | NullPointerException nfe) {
+            return false;
+        }
+        return true;
     }
 }

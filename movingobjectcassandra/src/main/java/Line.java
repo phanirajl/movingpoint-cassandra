@@ -13,14 +13,15 @@ public class Line {
             absisList.add(point_set.get(i).absis);
             ordinatList.add(point_set.get(i).ordinat);
         }
-        Point p = new Point();
-        p.absis = Collections.min(absisList);
-        p.ordinat = Collections.max(ordinatList);
-        bounding_box[0] = p;
+        Point p1 = new Point();
+        p1.absis = Collections.min(absisList);
+        p1.ordinat = Collections.max(ordinatList);
+        bounding_box[0] = p1;
 
-        p.absis = Collections.max(absisList);
-        p.ordinat = Collections.max(ordinatList);
-        bounding_box[1] = p;
+        Point p2 = new Point();
+        p2.absis = Collections.max(absisList);
+        p2.ordinat = Collections.max(ordinatList);
+        bounding_box[1] = p2;
 
     }
 
